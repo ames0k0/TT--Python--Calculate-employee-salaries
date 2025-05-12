@@ -18,7 +18,7 @@ cd TT--Python--Calculate-employee-salaries
 - `--report` Название файла для записи результата
 - `-h` Посмотреть справки скрипта
 
-```python
+```bash
 python main.py data1.csv data2.csv data3.csv --report payout
 ```
 
@@ -44,5 +44,13 @@ id,email,name,department,hours_worked,hourly_rate
     }
 }
 ```
+
+> [!NOTE]
+> Выбрасывает исключение в случае если:
+> - Передан невалидный путь к файлам
+> - Передан другой расширение файлов экспорта
+> - Передан другой расширение файла для отчета
+> - Передан генерации отчета не по `PAYOUT`
+> - Отсутствуют необходимые колонки
 
 <p align="center"><img src="./data/Diagram.drawio.png" /></p>
