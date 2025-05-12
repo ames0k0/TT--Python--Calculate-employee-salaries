@@ -1,25 +1,5 @@
-"""Скрипт подсчёта зарплаты сотрудников
-
-
-file_1  ->  [             ]  ->  [              ]  ->  [          ]  -> close
-file_2  ->  [ data_to_obj ]  ->  [ filter_by_id ]  ->  [ group_by ]  -> close
-...     ->  [             ]  ->  [              ]  ->  [          ]  -> close
-
-
-{
-    "Design": {
-        "Alice": {
-            "hours": 150,
-            "rate": 40,
-            "payout": $6000,
-        },
-        "__report__": {
-            "hours": sum(*),
-            "payout": sum(*),
-        }
-    }
-}
-"""
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import os
 import abc
@@ -31,14 +11,19 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 
+ProcessDataType = dict[str, int | str]
+ReportFileDataType = dict[str, dict[str, ProcessDataType]]
+
+
 class ReportFileFormatsEnum(str, enum.Enum):
     JSON = "JSON"
 
 
-ReportFileDataType = dict[str, dict[str, dict[str, int]]]
+class ReportDataProcessorsEnum(str, enum.Enum):
+    PAYOUT = "PAYOUT"
 
 
-class AbcExportReader(abc.ABC):
+class AbcExportFileReader(abc.ABC):
     @abc.abstractmethod
     def __init__(self, filepath: str):
         """Initiates the export reader
@@ -57,7 +42,7 @@ class AbcExportReader(abc.ABC):
         """
 
 
-class AbcReportWriter(abc.ABC):
+class AbcReportFileWriter(abc.ABC):
     @abc.abstractmethod
     def __init__(self, filename: str):
         """Initiates the report writer
@@ -75,7 +60,7 @@ class AbcReportWriter(abc.ABC):
         """
 
 
-class CSVExportReader(AbcExportReader):
+class CSVExportFileReader(AbcExportFileReader):
     DATA_DELIMITER: str = ","
 
     def __init__(self, filepath: str):
@@ -90,7 +75,7 @@ class CSVExportReader(AbcExportReader):
                 yield line.split(self.DATA_DELIMITER)
 
 
-class JSONReportWriter(AbcReportWriter):
+class JSONReportFileWriter(AbcReportFileWriter):
     FILE_EXT: str = ".json"
 
     def __init__(self, filename: str):
@@ -99,6 +84,48 @@ class JSONReportWriter(AbcReportWriter):
     def write(self, data: ReportFileDataType):
         with open(self.filename, "w") as ftw:
             json.dump(data, ftw, indent=2)
+
+
+class AbcDataProcessor(abc.ABC):
+    @abc.abstractmethod
+    def process(self, data: "Employee") -> ProcessDataType:
+        pass
+
+    @abc.abstractmethod
+    def summarize(self) -> ProcessDataType:
+        """Summarize the processed data"""
+
+    @abc.abstractmethod
+    def finish(self) -> ProcessDataType:
+        """Finish the processing data"""
+
+
+class CalcEmployeePayout(AbcDataProcessor):
+    def __init__(self):
+        self.sum_hours: int = 0
+        self.sum_payout: int = 0
+
+    def view_payout(self, payout: int, format: str = "$%s") -> str:
+        return format % payout
+
+    def process(self, data: "Employee") -> ProcessDataType:
+        payout = data.rate * data.hours
+        self.sum_hours += data.hours
+        self.sum_payout += payout
+        return {
+            "hours": data.hours,
+            "rate": data.rate,
+            "payout": self.view_payout(payout),
+        }
+
+    def summarize(self) -> ProcessDataType:
+        return {
+            "hours": self.sum_hours,
+            "payout": self.view_payout(self.sum_payout),
+        }
+
+    def finish(self) -> ProcessDataType:
+        return {}
 
 
 @dataclass
@@ -127,10 +154,6 @@ class Employee:
     def rate(self, value: str) -> None:
         # NOTE (ames0k0): No type checking
         self._rate = int(value)
-
-    def payout(self) -> int:
-        """Returns the employee payout"""
-        return self.hours * self.rate
 
 
 class Data2Object:
@@ -180,6 +203,7 @@ class Report:
         export_files: typing.Sequence[str],
         report_filename: str,
         report_file_format: ReportFileFormatsEnum,
+        report_by: list[ReportDataProcessorsEnum],
     ):
         self.export_files_reader = self.get_export_files_reader(
             export_files=export_files,
@@ -187,6 +211,9 @@ class Report:
         self.report_file_writer = self.get_report_file_writer(
             report_filename=report_filename,
             report_file_format=report_file_format,
+        )
+        self.report_data_processors = self.get_report_processors(
+            report_by=report_by,
         )
         self.loaded_employees_id: set[str] = set()
         self.departments_and_employees: dict[
@@ -197,13 +224,13 @@ class Report:
     def get_export_files_reader(
         self,
         export_files: typing.Sequence[str],
-    ) -> list[CSVExportReader]:
+    ) -> list[CSVExportFileReader]:
         """Returns file reader objects
 
         :param export_files: list[str], Export filepaths to read
-        :returns: typing.Union[CSVExportReader], Reader objects
+        :returns: typing.Union[CSVExportFileReader], Reader objects
         """
-        files_reader: list[CSVExportReader] = list()
+        files_reader: list[CSVExportFileReader] = list()
 
         for export_file in set(export_files):
             if not os.path.exists(export_file):
@@ -212,7 +239,7 @@ class Report:
             _, ext = os.path.splitext(export_file)
             if ext == ".csv":
                 files_reader.append(
-                    CSVExportReader(
+                    CSVExportFileReader(
                         filepath=export_file,
                     )
                 )
@@ -227,19 +254,33 @@ class Report:
         report_file_format: ReportFileFormatsEnum,
     ):
         if report_file_format == ReportFileFormatsEnum.JSON:
-            return JSONReportWriter(filename=report_filename)
+            return JSONReportFileWriter(filename=report_filename)
         else:
             raise ValueError(
                 "Запись файла не поддерживает: %s" % report_file_format,
             )
 
+    def get_report_processors(
+        self,
+        report_by: list[ReportDataProcessorsEnum],
+    ) -> list[CalcEmployeePayout]:
+        if not report_by:
+            raise ValueError("Необходимо передать генераторов отчета")
+        processors: list[CalcEmployeePayout] = []
+        for rp in report_by:
+            if rp == ReportDataProcessorsEnum.PAYOUT:
+                processors.append(CalcEmployeePayout())
+            else:
+                raise ValueError("Генератор отчёта не поддерживает: %s" % rp)
+        return processors
+
     def group_employees_by_department(
         self,
-        file_reader: CSVExportReader,
+        file_reader: CSVExportFileReader,
     ) -> None:
         """Groups employees by `department`
 
-        :param file_reader: typing.Union[CSVExportReader], Reader object
+        :param file_reader: typing.Union[CSVExportFileReader], Reader object
         :returns: None
         """
         rows = file_reader.stream()
@@ -256,29 +297,33 @@ class Report:
             )
 
     def generate(self) -> None:
-        result: dict[str, dict[str, dict[str, int]]] = dict()
+        result: ReportFileDataType = dict()
 
         for file_reader in self.export_files_reader:
             self.group_employees_by_department(file_reader=file_reader)
 
         for department, employees in self.departments_and_employees.items():
-            report_per_department: dict[str, dict[str, int]] = dict()
-            sum_hours: int = 0
-            sum_payout: int = 0
+            report_per_department: dict[str, ProcessDataType] = dict()
             for employee in employees:
-                report_per_department[employee.name] = {
-                    "hours": employee.hours,
-                    "rate": employee.rate,
-                    "payout": employee.payout(),
-                }
-                sum_hours += report_per_department[employee.name]["hours"]
-                sum_payout += report_per_department[employee.name]["payout"]
+                employee_report: ProcessDataType = dict()
+                for rd_processor in self.report_data_processors:
+                    employee_report.update(
+                        rd_processor.process(data=employee),
+                    )
+                report_per_department[employee.name] = employee_report
 
-            report_per_department["__report__"] = {
-                "hours": sum_hours,
-                "payout": sum_payout,
-            }
+            summarized_per_department: ProcessDataType = dict()
+            for rd_processor in self.report_data_processors:
+                summarized_per_department.update(
+                    rd_processor.summarize(),
+                )
+
+            # NOTE (ames0k0)
+            # В примере выходного файла имеется сумма всех часов и зарплат
+            report_per_department["__summary__"] = summarized_per_department
             result[department] = report_per_department
+
+        # XXX (ames0k0): `rd_processor.finish()` can be added here
 
         self.report_file_writer.write(data=result)
 
@@ -286,16 +331,17 @@ class Report:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog=__file__,
+        formatter_class=argparse.RawTextHelpFormatter,
         description="\n".join(
             (
                 "Скрипт подсчёта зарплаты сотрудников\n",
                 "Поддерживает чтение файлов: .csv",
                 "Поддерживает запись файлов: .json",
+                "Поддерживает генераторов отчёта: PAYOUT",
             )
         ),
         usage="python main.py [export_file]... --report [report_filename]",
         epilog="python main.py data1.csv data2.csv data3.csv --report payout",
-        formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument("--report", help="Report filename")
 
@@ -309,5 +355,8 @@ if __name__ == "__main__":
         export_files=export_files,
         report_filename=args.report,
         report_file_format=ReportFileFormatsEnum.JSON,
+        report_by=[
+            ReportDataProcessorsEnum.PAYOUT,
+        ],
     )
     report.generate()

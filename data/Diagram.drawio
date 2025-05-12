@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.2.15 Chrome/134.0.6998.205 Electron/35.2.1 Safari/537.36" version="26.2.15">
   <diagram name="Page-1" id="m3SqwrhWJqCA_VAdvfQs">
-    <mxGraphModel dx="2216" dy="992" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1570" dy="703" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -110,10 +110,10 @@
           <mxGeometry x="680" y="520" width="80" height="40" as="geometry" />
         </mxCell>
         <mxCell id="MwJkDqI5hdyIqMmjFNLh-91" value="hours" style="whiteSpace=wrap;html=1;fillColor=#d80073;strokeColor=#A50040;fontColor=#ffffff;rounded=1;" parent="1" vertex="1">
-          <mxGeometry x="630" y="600" width="80" height="40" as="geometry" />
+          <mxGeometry x="610" y="600" width="80" height="40" as="geometry" />
         </mxCell>
         <mxCell id="MwJkDqI5hdyIqMmjFNLh-95" value="payout" style="whiteSpace=wrap;html=1;rounded=1;" parent="1" vertex="1">
-          <mxGeometry x="730" y="600" width="80" height="40" as="geometry" />
+          <mxGeometry x="750" y="600" width="80" height="40" as="geometry" />
         </mxCell>
         <mxCell id="lm72yPOCraA93xYRCu_k-2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="MwJkDqI5hdyIqMmjFNLh-99" target="lm72yPOCraA93xYRCu_k-1">
           <mxGeometry relative="1" as="geometry" />
