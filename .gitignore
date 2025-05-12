@@ -3,4 +3,6 @@ __pycache__
 *.json
 *.csv
 *.bkp
+.venv
 .idea
+.coverage
