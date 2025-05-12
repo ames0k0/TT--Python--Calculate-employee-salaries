@@ -38,17 +38,17 @@ id,email,name,department,hours_worked,hourly_rate
 Пример выходных данных
 ```json
 {
-    "Design": {
-        "Alice": {
-            "hours": 150,
-            "rate": 40,
-            "payout": "$6000",
-        },
-        "__summary__": {
-            "hours": 150,
-            "payout": "$6000",
-        }
+  "Marketing": {
+    "Alice Johnson": {
+      "hours": 160,
+      "rate": 50,
+      "payout": "$8000"
+    },
+    "__summary__": {
+      "hours": 160,
+      "payout": "$8000"
     }
+  }
 }
 ```
 
@@ -79,7 +79,8 @@ id,email,name,department,hours_worked,hourly_rate
 </details>
 
 ```bash
-pytest tests
+pytest tests/
+pytest --cov=. tests/
 ```
 
 ```
